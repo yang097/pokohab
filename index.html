@@ -1052,10 +1052,11 @@ async function loadData() {
   const grid = document.getElementById('habitat-grid');
   grid.innerHTML = '<div class="no-results" style="padding:80px 20px"><div style="font-size:32px;margin-bottom:12px">⏳</div>正在加载栖息地数据…</div>';
   try {
-    const res = await fetch('pokopia_栖息地_final.json');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const res = await fetch('habitats.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' — 找不到 habitats.json');
     const json = await res.json();
     HABITATS = json['栖息地'];
+    if (!HABITATS || !HABITATS.length) throw new Error('JSON 格式错误，缺少「栖息地」字段');
     TOTAL = HABITATS.length;
     loadOwned();
     updateProgress();
@@ -1065,8 +1066,11 @@ async function loadData() {
     grid.innerHTML = `<div class="no-results" style="padding:80px 20px;color:var(--accent4)">
       <div style="font-size:32px;margin-bottom:12px">⚠️</div>
       <div style="font-size:15px;margin-bottom:8px">无法加载数据文件</div>
-      <div style="font-size:12px;color:var(--text-dim)">请确保 <b>pokopia_栖息地_final.json</b> 与本 HTML 文件放在同一目录，<br>并通过本地 HTTP 服务器（如 VS Code Live Server）打开</div>
-      <div style="font-size:11px;margin-top:8px;color:var(--text-dim)">${err.message}</div>
+      <div style="font-size:12px;color:var(--text-dim)">
+        请确保 <b>habitats.json</b> 与 HTML 文件在同一目录下<br>
+        当前页面地址：<code>${location.href}</code>
+      </div>
+      <div style="font-size:11px;margin-top:8px;color:var(--accent4)">${err.message}</div>
     </div>`;
   }
 }
