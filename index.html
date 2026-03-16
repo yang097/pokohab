@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokopia 栖息地规划器</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --surface3: #2a2f47;
+    --border: #2e3350;
+    --accent: #7c9ef0;
+    --accent2: #e0a060;
+    --accent3: #6dd8a0;
+    --accent4: #d46fa0;
+    --text: #e8ecf8;
+    --text-muted: #8892b0;
+    --text-dim: #4a5270;
+    --legendary: #f0c060;
+    --shadow: 0 4px 24px rgba(0,0,0,0.5);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,158,240,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,158,240,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Header */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(15,17,23,0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 20px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .stat-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    transition: all 0.2s;
+  }
+
+  .stat-chip .num {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 14px;
+    min-width: 20px;
+    text-align: center;
+  }
+
+  /* Main layout */
+  .main {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 0;
+    height: calc(100vh - 64px);
+  }
+
+  /* Left: habitat list */
+  .left-panel {
+    overflow-y: auto;
+    padding: 24px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .left-panel::-webkit-scrollbar { width: 6px; }
+  .left-panel::-webkit-scrollbar-track { background: transparent; }
+  .left-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-wrap {
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+  }
+
+  .search-wrap svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    width: 16px;
+    height: 16px;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 9px 12px 9px 38px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text-dim); }
+
+  .btn {
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,158,240,0.08); }
+
+  .btn-danger:hover { border-color: var(--accent4); color: var(--accent4); background: rgba(212,111,160,0.08); }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0f1117;
+    font-weight: 600;
+  }
+
+  .btn-primary:hover { background: #9ab5f5; border-color: #9ab5f5; color: #0f1117; }
+
+  /* Section label */
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    padding-left: 2px;
+  }
+
+  /* Habitat grid */
+  .habitat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 8px;
+  }
+
+  .habitat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .habitat-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: transparent;
+    border-radius: 3px 0 0 3px;
+    transition: background 0.18s;
+  }
+
+  .habitat-card:hover {
+    border-color: rgba(124,158,240,0.4);
+    background: var(--surface2);
+    transform: translateY(-1px);
+  }
+
+  .habitat-card.selected {
+    border-color: var(--accent);
+    background: rgba(124,158,240,0.1);
+  }
+
+  .habitat-card.selected::before {
+    background: var(--accent);
+  }
+
+  .habitat-card.legendary {
+    border-color: rgba(240,192,96,0.3);
+  }
+
+  .habitat-card.legendary.selected {
+    border-color: var(--legendary);
+    background: rgba(240,192,96,0.08);
+  }
+
+  .habitat-card.legendary::before {
+    background: transparent;
+  }
+
+  .habitat-card.legendary.selected::before {
+    background: var(--legendary);
+  }
+
+  /* Checkbox */
+  .card-check {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--text-dim);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.18s;
+  }
+
+  .habitat-card.selected .card-check {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .habitat-card.legendary.selected .card-check {
+    background: var(--legendary);
+    border-color: var(--legendary);
+  }
+
+  .card-check svg {
+    width: 11px; height: 11px;
+    color: #0f1117;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.18s;
+  }
+
+  .habitat-card.selected .card-check svg {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .card-body { flex: 1; min-width: 0; }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .card-num {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.3;
+    flex: 1;
+  }
+
+  .badge-legendary {
+    font-size: 9px;
+    padding: 1px 6px;
+    background: rgba(240,192,96,0.15);
+    border: 1px solid rgba(240,192,96,0.4);
+    color: var(--legendary);
+    border-radius: 3px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
+
+  .card-pokemon {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* No results */
+  .no-results {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  /* Right panel */
+  .right-panel {
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .panel-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .panel-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .panel-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .panel-content {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .panel-content::-webkit-scrollbar { width: 4px; }
+  .panel-content::-webkit-scrollbar-track { background: transparent; }
+  .panel-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    height: 100%;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.4;
+  }
+
+  .empty-text {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .empty-hint {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  /* Summary tabs */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    flex-shrink: 0;
+  }
+
+  .tab {
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .tab:hover { color: var(--text); }
+
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Selected habitats list */
+  .selected-list {
+    padding: 12px 16px;
+  }
+
+  .selected-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+
+  .selected-item:hover { background: var(--surface2); }
+
+  .selected-num {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    width: 28px;
+    flex-shrink: 0;
+  }
+
+  .selected-name {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .remove-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .remove-btn:hover { background: rgba(212,111,160,0.15); color: var(--accent4); }
+
+  /* Materials section */
+  .materials-section {
+    padding: 16px;
+  }
+
+  .materials-section .section-label {
+    margin-bottom: 10px;
+  }
+
+  .material-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    transition: border-color 0.15s;
+  }
+
+  .material-row:hover { border-color: var(--border); }
+
+  .material-name {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .material-name.is-flexible {
+    color: var(--text-muted);
+  }
+
+  .material-badge-flex {
+    font-size: 9px;
+    padding: 1px 5px;
+    background: rgba(109,216,160,0.1);
+    border: 1px solid rgba(109,216,160,0.3);
+    color: var(--accent3);
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .material-qty {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent2);
+    min-width: 32px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Pokemon section */
+  .pokemon-section {
+    padding: 16px;
+  }
+
+  .pokemon-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .pokemon-chip {
+    padding: 4px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+
+  .pokemon-chip:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,158,240,0.08); }
+
+  .pokemon-chip.legendary-pokemon {
+    border-color: rgba(240,192,96,0.35);
+    color: var(--legendary);
+    background: rgba(240,192,96,0.06);
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0 16px;
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .habitat-card { animation: fadeIn 0.2s ease both; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .material-row, .pokemon-chip, .selected-item { animation: slideIn 0.2s ease both; }
+
+  /* Count badge */
+  .count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    background: var(--accent);
+    color: #0f1117;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 10px;
+  }
+
+  /* Scrollable area */
+  .scroll-area {
+    overflow-y: auto;
+    flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .scroll-area::-webkit-scrollbar { width: 4px; }
+  .scroll-area::-webkit-scrollbar-track { background: transparent; }
+  .scroll-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Owned / Mark mode styles ─────────────────────────────────────── */
+
+  /* Owned card: dimmed with green tick overlay */
+  .habitat-card.owned {
+    opacity: 0.45;
+    background: var(--surface);
+  }
+
+  .habitat-card.owned:hover {
+    opacity: 0.75;
+    border-color: rgba(109,216,160,0.35);
+    background: rgba(109,216,160,0.05);
+    transform: none;
+  }
+
+  /* Owned badge on card */
+  .owned-badge {
+    position: absolute;
+    top: 7px;
+    right: 8px;
+    font-size: 9px;
+    padding: 1px 6px;
+    background: rgba(109,216,160,0.15);
+    border: 1px solid rgba(109,216,160,0.4);
+    color: var(--accent3);
+    border-radius: 3px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+  }
+
+  /* Mark button on each card (right-click area) */
+  .mark-btn {
+    position: absolute;
+    bottom: 7px;
+    right: 8px;
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .habitat-card:hover .mark-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .mark-btn:hover {
+    border-color: var(--accent3);
+    color: var(--accent3);
+    background: rgba(109,216,160,0.1);
+  }
+
+  .habitat-card.owned .mark-btn {
+    border-color: rgba(109,216,160,0.4);
+    color: var(--accent3);
+    background: rgba(109,216,160,0.08);
+    opacity: 0;
+  }
+
+  .habitat-card.owned:hover .mark-btn {
+    opacity: 1;
+  }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0 4px;
+  }
+
+  .filter-btn {
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .filter-btn:hover {
+    border-color: var(--accent3);
+    color: var(--accent3);
+  }
+
+  .filter-btn.active-all {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(124,158,240,0.08);
+  }
+
+  .filter-btn.active-unowned {
+    border-color: var(--accent3);
+    color: var(--accent3);
+    background: rgba(109,216,160,0.08);
+  }
+
+  .filter-btn.active-owned {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(224,160,96,0.08);
+  }
+
+  .filter-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Data management section in right panel */
+  .data-section {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .data-section .section-label { margin-bottom: 10px; }
+
+  .data-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .data-btns .btn {
+    flex: 1;
+    justify-content: center;
+    font-size: 12px;
+    padding: 7px 10px;
+  }
+
+  /* Toast notification */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.3s;
+    white-space: nowrap;
+    box-shadow: var(--shadow);
+    pointer-events: none;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Progress bar in header */
+  .progress-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .progress-bar-wrap {
+    width: 60px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent3), var(--accent));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  .progress-pct {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent3);
+    min-width: 30px;
+    text-align: right;
+  }
+
+  /* Hidden file input */
+  #import-input { display: none; }
+
+  /* Highlight search match */
+  mark {
+    background: rgba(224,160,96,0.3);
+    color: var(--accent2);
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+
+  /* Sort toggle */
+  .sort-group {
+    display: flex;
+    gap: 4px;
+  }
+
+  .sort-btn {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .sort-btn.active, .sort-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(124,158,240,0.08);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🏕️</div>
+    <span class="logo-text">Pokopia 栖息地规划器</span>
+  </div>
+  <div class="header-stats">
+    <div class="progress-chip">
+      <span>已拥有</span>
+      <span class="num" id="stat-owned">0</span>
+      <span>/ <span id="stat-total">?</span></span>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+      <span class="progress-pct" id="progress-pct">0%</span>
+    </div>
+    <div class="stat-chip">
+      <span>已选</span>
+      <span class="num" id="stat-selected">0</span>
+      <span>个栖息地</span>
+    </div>
+    <div class="stat-chip">
+      <span>需要</span>
+      <span class="num" id="stat-materials">0</span>
+      <span>种材料</span>
+    </div>
+    <div class="stat-chip">
+      <span>可见</span>
+      <span class="num" id="stat-pokemon">0</span>
+      <span>只宝可梦</span>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Left: Habitat list -->
+  <div class="left-panel">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input class="search-input" id="search" placeholder="搜索栖息地名称或宝可梦…" oninput="onSearch()">
+      </div>
+      <div class="sort-group">
+        <button class="sort-btn active" id="sort-num" onclick="setSort('num')">按编号</button>
+        <button class="sort-btn" id="sort-name" onclick="setSort('name')">按名称</button>
+      </div>
+      <button class="btn btn-danger" onclick="clearAll()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M8 6V4h8v2"/></svg>
+        清空
+      </button>
+    </div>
+    <div class="filter-bar">
+      <span class="filter-label">显示</span>
+      <button class="filter-btn active-all" id="filter-all" onclick="setFilter('all')">
+        <span class="filter-dot" style="background:var(--accent)"></span>全部
+      </button>
+      <button class="filter-btn" id="filter-unowned" onclick="setFilter('unowned')">
+        <span class="filter-dot" style="background:var(--accent3)"></span>未拥有
+      </button>
+      <button class="filter-btn" id="filter-owned" onclick="setFilter('owned')">
+        <span class="filter-dot" style="background:var(--accent2)"></span>已拥有
+      </button>
+      <span style="margin-left:auto; font-size:11px; color:var(--text-dim)">悬停卡片可标记拥有状态</span>
+    </div>
+    <div class="section-label" id="list-label">全部栖息地 · 203 个</div>
+    <div class="habitat-grid" id="habitat-grid"></div>
+  </div>
+
+  <!-- Right: Summary panel -->
+  <div class="right-panel">
+    <div class="panel-header">
+      <div class="panel-title">规划汇总</div>
+      <div class="panel-subtitle">勾选左侧栖息地，自动汇总所需材料与宝可梦</div>
+    </div>
+
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">🌿</div>
+      <div class="empty-text">还没有选择任何栖息地</div>
+      <div class="empty-hint">点击左侧卡片开始规划你的乐园</div>
+    </div>
+
+    <div id="summary-content" style="display:none; display:flex; flex-direction:column; height:100%; overflow:hidden;">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('materials')">
+          所需材料 <span id="tab-mat-count" class="count-badge" style="margin-left:6px">0</span>
+        </div>
+        <div class="tab" onclick="switchTab('pokemon')">
+          可见宝可梦 <span id="tab-poke-count" class="count-badge" style="margin-left:6px">0</span>
+        </div>
+        <div class="tab" onclick="switchTab('selected')">
+          已选栖息地 <span id="tab-sel-count" class="count-badge" style="margin-left:6px">0</span>
+        </div>
+      </div>
+
+      <div class="scroll-area">
+        <!-- Materials tab -->
+        <div class="tab-panel active" id="tab-materials">
+          <div class="materials-section">
+            <div class="section-label">📦 道具汇总（同名自动合并）</div>
+            <div id="materials-list"></div>
+          </div>
+        </div>
+
+        <!-- Pokemon tab -->
+        <div class="tab-panel" id="tab-pokemon">
+          <div class="pokemon-section">
+            <div class="section-label" id="pokemon-label">🎯 可能出现的宝可梦</div>
+            <div class="pokemon-grid" id="pokemon-list"></div>
+          </div>
+        </div>
+
+        <!-- Selected tab -->
+        <div class="tab-panel" id="tab-selected">
+          <div class="selected-list" id="selected-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data management -->
+    <div class="data-section">
+      <div class="section-label">💾 数据管理（已拥有标记）</div>
+      <div class="data-btns">
+        <button class="btn" onclick="exportOwned()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          导出标记
+        </button>
+        <button class="btn" onclick="triggerImport()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10" transform="rotate(180 12 12)"/><line x1="12" y1="9" x2="12" y2="21"/></svg>
+          导入标记
+        </button>
+        <button class="btn btn-danger" onclick="clearOwned()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M8 6V4h8v2"/></svg>
+          清除标记
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="import-input" accept=".json" onchange="importOwned(event)">
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Data (从外部 JSON 加载) ───────────────────────────────────────────────────
+let HABITATS = [];
+let TOTAL = 0;
+
+async function loadData() {
+  const grid = document.getElementById('habitat-grid');
+  grid.innerHTML = '<div class="no-results" style="padding:80px 20px"><div style="font-size:32px;margin-bottom:12px">⏳</div>正在加载栖息地数据…</div>';
+  try {
+    const res = await fetch('pokopia_栖息地_final.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    HABITATS = json['栖息地'];
+    TOTAL = HABITATS.length;
+    loadOwned();
+    updateProgress();
+    renderGrid();
+    renderSummary();
+  } catch (err) {
+    grid.innerHTML = `<div class="no-results" style="padding:80px 20px;color:var(--accent4)">
+      <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+      <div style="font-size:15px;margin-bottom:8px">无法加载数据文件</div>
+      <div style="font-size:12px;color:var(--text-dim)">请确保 <b>pokopia_栖息地_final.json</b> 与本 HTML 文件放在同一目录，<br>并通过本地 HTTP 服务器（如 VS Code Live Server）打开</div>
+      <div style="font-size:11px;margin-top:8px;color:var(--text-dim)">${err.message}</div>
+    </div>`;
+  }
+}
+
+const TOTAL = HABITATS.length; // 已记录的栖息地数
+const LEGENDARY_POKEMON = new Set(["超梦","雷公","水君","炎帝","急冻鸟","闪电鸟","火焰鸟"]);
+const LS_KEY = 'pokopia_owned_v1';
+
+// ── State ────────────────────────────────────────────────────────────────────
+let selected = new Set();   // 规划勾选
+let owned    = new Set();   // 已拥有标记（持久化）
+let searchQuery = '';
+let sortMode = 'num';       // 'num' | 'name'
+let filterMode = 'all';     // 'all' | 'unowned' | 'owned'
+let currentTab = 'materials';
+
+// ── localStorage ─────────────────────────────────────────────────────────────
+function loadOwned() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) owned = new Set(JSON.parse(raw));
+  } catch(e) { owned = new Set(); }
+}
+
+function saveOwned() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify([...owned]));
+  } catch(e) {}
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg, duration = 2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+function isFlexible(name) { return name.includes('(任意)'); }
+
+function highlight(text, query) {
+  if (!query) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
+}
+
+function renderCard(h) {
+  const sel  = selected.has(h.编号);
+  const own  = owned.has(h.编号);
+  const leg  = h.备注.includes('传说');
+  const q    = searchQuery;
+  const pokeStr = h.宝可梦.slice(0, 4).join(' · ') + (h.宝可梦.length > 4 ? ' …' : '');
+
+  return `
+    <div class="habitat-card${sel ? ' selected' : ''}${leg ? ' legendary' : ''}${own ? ' owned' : ''}"
+         onclick="toggle('${h.编号}')" data-id="${h.编号}">
+      <div class="card-check">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="1.5,6 4.5,9.5 10.5,2.5"/>
+        </svg>
+      </div>
+      <div class="card-body">
+        <div class="card-header">
+          <span class="card-num">${h.编号}</span>
+          <span class="card-name">${highlight(h.名称, q)}</span>
+          ${leg ? '<span class="badge-legendary">★传说</span>' : ''}
+        </div>
+        <div class="card-pokemon">${highlight(pokeStr, q)}</div>
+      </div>
+      ${own ? '<span class="owned-badge">✓ 已拥有</span>' : ''}
+      <button class="mark-btn" onclick="event.stopPropagation(); toggleOwned('${h.编号}')">
+        ${own ? '取消拥有' : '标记拥有'}
+      </button>
+    </div>`;
+}
+
+function getFiltered() {
+  const q = searchQuery.trim().toLowerCase();
+  let list = HABITATS.filter(h => {
+    // Ownership filter
+    if (filterMode === 'unowned' && owned.has(h.编号)) return false;
+    if (filterMode === 'owned'   && !owned.has(h.编号)) return false;
+    // Search filter
+    if (!q) return true;
+    return h.名称.toLowerCase().includes(q) ||
+           h.宝可梦.some(p => p.toLowerCase().includes(q)) ||
+           h.编号.includes(q);
+  });
+  if (sortMode === 'name') {
+    list = [...list].sort((a, b) => a.名称.localeCompare(b.名称, 'zh'));
+  }
+  return list;
+}
+
+function renderGrid() {
+  const list = getFiltered();
+  const grid = document.getElementById('habitat-grid');
+  const label = document.getElementById('list-label');
+
+  if (list.length === 0) {
+    const msg = filterMode === 'unowned' ? '🎉 所有栖息地都已拥有！' :
+                filterMode === 'owned'   ? '还没有标记任何栖息地' :
+                `没有找到「${searchQuery}」相关的栖息地`;
+    grid.innerHTML = `<div class="no-results">${msg}</div>`;
+  } else {
+    grid.innerHTML = list.map(renderCard).join('');
+  }
+
+  const suffix = filterMode === 'unowned' ? ' · 未拥有' :
+                 filterMode === 'owned'   ? ' · 已拥有' : '';
+  label.textContent = searchQuery
+    ? `搜索结果 · ${list.length} / ${TOTAL} 个`
+    : `${filterMode === 'all' ? '全部' : filterMode === 'unowned' ? '未拥有' : '已拥有'}栖息地 · ${list.length} 个`;
+}
+
+// ── Progress bar ──────────────────────────────────────────────────────────────
+function updateProgress() {
+  const n = owned.size;
+  const pct = Math.round(n / TOTAL * 100);
+  document.getElementById('stat-owned').textContent = n;
+  document.getElementById('stat-total').textContent = TOTAL;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+}
+
+// ── Summary ───────────────────────────────────────────────────────────────────
+function computeSummary() {
+  const matMap = {};
+  const pokeSet = new Set();
+  const selHabitats = HABITATS.filter(h => selected.has(h.编号));
+  for (const h of selHabitats) {
+    for (const m of h.材料) {
+      matMap[m.名称] = (matMap[m.名称] || 0) + m.数量;
+    }
+    for (const p of h.宝可梦) pokeSet.add(p);
+  }
+  return { matMap, pokeSet, selHabitats };
+}
+
+function renderSummary() {
+  const count = selected.size;
+  document.getElementById('stat-selected').textContent = count;
+
+  const empty   = document.getElementById('empty-state');
+  const content = document.getElementById('summary-content');
+
+  if (count === 0) {
+    empty.style.display = 'flex';
+    content.style.display = 'none';
+    document.getElementById('stat-materials').textContent = 0;
+    document.getElementById('stat-pokemon').textContent = 0;
+    return;
+  }
+
+  empty.style.display = 'none';
+  content.style.display = 'flex';
+
+  const { matMap, pokeSet, selHabitats } = computeSummary();
+
+  document.getElementById('stat-materials').textContent = Object.keys(matMap).length;
+  document.getElementById('stat-pokemon').textContent = pokeSet.size;
+  document.getElementById('tab-mat-count').textContent  = Object.keys(matMap).length;
+  document.getElementById('tab-poke-count').textContent = pokeSet.size;
+  document.getElementById('tab-sel-count').textContent  = count;
+
+  // Materials
+  const matEntries = Object.entries(matMap).sort((a, b) => {
+    const af = isFlexible(a[0]) ? 1 : 0, bf = isFlexible(b[0]) ? 1 : 0;
+    if (af !== bf) return af - bf;
+    return b[1] - a[1];
+  });
+
+  document.getElementById('materials-list').innerHTML = matEntries.map(([name, qty]) => {
+    const flex = isFlexible(name);
+    return `<div class="material-row">
+      <span class="material-name${flex ? ' is-flexible' : ''}">${name}</span>
+      ${flex ? '<span class="material-badge-flex">任意</span>' : ''}
+      <span class="material-qty">×${qty}</span>
+    </div>`;
+  }).join('');
+
+  // Pokemon
+  const pokeArr = [...pokeSet].sort((a, b) => {
+    const al = LEGENDARY_POKEMON.has(a) ? 1 : 0, bl = LEGENDARY_POKEMON.has(b) ? 1 : 0;
+    return al - bl || a.localeCompare(b, 'zh');
+  });
+  document.getElementById('pokemon-label').textContent = `🎯 可能出现的宝可梦 · ${pokeArr.length} 只`;
+  document.getElementById('pokemon-list').innerHTML = pokeArr.map(p => {
+    const leg = LEGENDARY_POKEMON.has(p) || selHabitats.some(h => h.备注.includes('传说') && h.宝可梦.includes(p));
+    return `<span class="pokemon-chip${leg ? ' legendary-pokemon' : ''}">${p}</span>`;
+  }).join('');
+
+  // Selected list
+  document.getElementById('selected-list').innerHTML = selHabitats.map(h =>
+    `<div class="selected-item" onclick="toggle('${h.编号}')">
+      <span class="selected-num">${h.编号}</span>
+      <span class="selected-name">${h.名称}</span>
+      <button class="remove-btn" onclick="event.stopPropagation();toggle('${h.编号}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>`
+  ).join('');
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+function toggle(id) {
+  selected.has(id) ? selected.delete(id) : selected.add(id);
+  const card = document.querySelector(`.habitat-card[data-id="${id}"]`);
+  if (card) card.classList.toggle('selected');
+  renderSummary();
+}
+
+function toggleOwned(id) {
+  if (owned.has(id)) {
+    owned.delete(id);
+    showToast('已取消拥有标记');
+  } else {
+    owned.add(id);
+    showToast('✓ 已标记为拥有');
+  }
+  saveOwned();
+  updateProgress();
+  // Re-render card in place (faster than full grid re-render)
+  const card = document.querySelector(`.habitat-card[data-id="${id}"]`);
+  if (card) {
+    const isOwned = owned.has(id);
+    card.classList.toggle('owned', isOwned);
+    // Update badge
+    const badge = card.querySelector('.owned-badge');
+    if (isOwned && !badge) {
+      card.insertAdjacentHTML('beforeend', '<span class="owned-badge">✓ 已拥有</span>');
+    } else if (!isOwned && badge) {
+      badge.remove();
+    }
+    // Update mark button text
+    const btn = card.querySelector('.mark-btn');
+    if (btn) btn.textContent = isOwned ? '取消拥有' : '标记拥有';
+    // If filter is active, remove card from view
+    if (filterMode !== 'all') {
+      setTimeout(() => renderGrid(), 300);
+    }
+  }
+}
+
+function clearAll() {
+  selected.clear();
+  document.querySelectorAll('.habitat-card.selected').forEach(c => c.classList.remove('selected'));
+  renderSummary();
+}
+
+function onSearch() {
+  searchQuery = document.getElementById('search').value;
+  renderGrid();
+}
+
+function setSort(mode) {
+  sortMode = mode;
+  document.getElementById('sort-num').classList.toggle('active', mode === 'num');
+  document.getElementById('sort-name').classList.toggle('active', mode === 'name');
+  renderGrid();
+}
+
+function setFilter(mode) {
+  filterMode = mode;
+  ['all','unowned','owned'].forEach(m => {
+    const btn = document.getElementById(`filter-${m}`);
+    btn.className = `filter-btn${mode === m ? ` active-${m}` : ''}`;
+  });
+  renderGrid();
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const tabs = ['materials','pokemon','selected'];
+    t.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.toggle('active', p.id === `tab-${tab}`);
+  });
+}
+
+// ── Export / Import ───────────────────────────────────────────────────────────
+function exportOwned() {
+  if (owned.size === 0) { showToast('还没有任何已拥有标记'); return; }
+  const data = {
+    version: 1,
+    exported_at: new Date().toISOString(),
+    owned: [...owned].sort()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `pokopia_owned_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`✓ 已导出 ${owned.size} 个标记`);
+}
+
+function triggerImport() {
+  document.getElementById('import-input').value = '';
+  document.getElementById('import-input').click();
+}
+
+function importOwned(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      // Support both array and {owned:[...]} formats
+      const list = Array.isArray(data) ? data :
+                   Array.isArray(data.owned) ? data.owned : null;
+      if (!list) throw new Error('格式不正确');
+
+      // Validate IDs against known habitats
+      const validIds = new Set(HABITATS.map(h => h.编号));
+      const valid = list.filter(id => validIds.has(id));
+      const skip  = list.length - valid.length;
+
+      owned = new Set(valid);
+      saveOwned();
+      updateProgress();
+      renderGrid();
+      const msg = skip > 0
+        ? `✓ 已导入 ${valid.length} 个标记（跳过 ${skip} 个无效 ID）`
+        : `✓ 已导入 ${valid.length} 个标记`;
+      showToast(msg, 3000);
+    } catch(err) {
+      showToast('⚠ 文件格式不正确，导入失败', 3000);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function clearOwned() {
+  if (owned.size === 0) { showToast('没有需要清除的标记'); return; }
+  const n = owned.size;
+  owned.clear();
+  saveOwned();
+  updateProgress();
+  renderGrid();
+  showToast(`已清除 ${n} 个拥有标记`);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadData(); // 异步加载 JSON 后自动初始化
+</script>
+</body>
+</html>
